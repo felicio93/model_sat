@@ -179,11 +179,13 @@ def spatial_collocation(ds_sat_subset: xr.Dataset,
                model nodes [n_points, n_nearest]
         inds: 2D array of corresponding node indices [n_points, n_nearest]
     """
+    _logger.info("Performing spatial collocation")
     dists, inds = tree.query(
         np.column_stack((ds_sat_subset['lon'].values,
                          ds_sat_subset['lat'].values)), 
         k=n_nearest
     )
+    _logger.info("Spatial collocation complete")
     return dists, inds
 
 
@@ -218,6 +220,7 @@ def extract_model_data(m_file: xr.DataArray,
     Notes:
         This works for SCHISM only, may add other models in the future
     """
+    _logger.info("Performing model data extraction")
     values, depths = [], []
 
     for i, nodes in enumerate(nearest_nodes):
@@ -233,6 +236,7 @@ def extract_model_data(m_file: xr.DataArray,
 
         depths.append(model_depth[nodes])
 
+    _logger.info("Model data extraction complete")
     return np.array(values), np.array(depths)
 
 
