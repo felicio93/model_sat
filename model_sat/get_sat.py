@@ -13,7 +13,7 @@ from tqdm import tqdm
 from model_sat.urls import URL_TEMPLATES
 
 logging.basicConfig(
-    level=logging.logging.WARNING,
+    level=logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),  # Print logs to the console
