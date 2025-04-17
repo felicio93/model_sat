@@ -12,7 +12,7 @@ from typing import Union, Optional, List
 from model_sat.urls import URL_TEMPLATES
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.logging.WARNING,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),  # Print logs to the console
