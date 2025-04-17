@@ -13,5 +13,5 @@ setup(
         'scipy',
         'ocsmesh',  # Optional if you want users to install it
     ],
-    python_requires='>=3.11',
+    python_requires='>=3.10',
 )
