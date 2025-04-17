@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "model_sat"
+version = "0.1.0"
+description = "Satellite-model collocation tools for ocean model data"
+authors = [
+    { name = "Felicio Cassalho", email = "felicio.cassalho@noaa.gov" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "numpy",
+    "xarray",
+    "scipy",
+    "requests",
+    "ocsmesh"
+]
+
+[project.urls]
+Homepage = "https://github.com/felicio93/model_sat"
+Repository = "https://github.com/felicio93/model_sat"
