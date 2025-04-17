@@ -59,6 +59,8 @@ def download_sat_data(dates_str: List[str],
         dates_str: List with all the dates data will be downloaded for
         url_template: from urls.py
         raw_dir: path to where the raw sat data will be saved
+        retries: how many times will it try to download the data
+        delay: how long will it wait to try the download again
 
     Returns:
         List of paths to the downlaoded satellite files.
