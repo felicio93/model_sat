@@ -8,6 +8,7 @@ import xarray as xr
 
 from datetime import datetime, timedelta
 from typing import Union, Optional, List
+from tqdm import tqdm
 
 from model_sat.urls import URL_TEMPLATES
 
@@ -48,6 +49,7 @@ def generate_daily_dates(start_date_str: str,
 def download_sat_data(dates_str: List[str],
                       url_template: str,
                       raw_dir: str,
+                      sat: str,
                       retries: int = 3,
                       delay: int = 5) -> List[str]:
     """
@@ -64,7 +66,7 @@ def download_sat_data(dates_str: List[str],
     os.makedirs(raw_dir, exist_ok=True)
     raw_files = []
 
-    for date_str in dates_str:
+    for date_str in tqdm(dates_str, desc=f"Downloading {sat} data..."):
         url = f"{url_template}{date_str}.nc"
         filename = os.path.basename(url)
         raw_path = os.path.join(raw_dir, filename)
@@ -156,7 +158,7 @@ def crop_sat_data(file_paths: List[str],
     os.makedirs(cropped_dir, exist_ok=True)
     cropped_datasets = []
 
-    for file_path in file_paths:
+    for file_path in tqdm(file_paths, desc="Cropping"):
         try:
             with xr.open_dataset(file_path) as ds:
                 ds.load()
@@ -250,7 +252,7 @@ def get_sat(start_date: str,
     cropping_enabled = None not in (lat_min, lat_max, lon_min, lon_max)
     dates_str = generate_daily_dates(start_date, end_date)
 
-    raw_files = download_sat_data(dates_str, url_template, raw_dir)
+    raw_files = download_sat_data(dates_str, url_template, raw_dir, sat)
 
     datasets_to_concat = []
     if cropping_enabled:
