@@ -9,7 +9,7 @@ import xarray as xr
 from datetime import datetime, timedelta
 from typing import Union, Optional, List
 
-from urls import URL_TEMPLATES
+from model_sat.urls import URL_TEMPLATES
 
 logging.basicConfig(
     level=logging.INFO,
