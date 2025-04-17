@@ -11,6 +11,7 @@ setup(
         'xarray',
         'requests',
         'scipy',
+        'tqdm',
         'ocsmesh',  # Optional if you want users to install it
     ],
     python_requires='>=3.10',
