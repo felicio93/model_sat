@@ -50,7 +50,7 @@ def download_sat_data(dates_str: List[str],
                       url_template: str,
                       raw_dir: str,
                       sat: str,
-                      retries: int = 3,
+                      retries: int = 1,
                       delay: int = 5) -> List[str]:
     """
     This function downloads the satellite data
