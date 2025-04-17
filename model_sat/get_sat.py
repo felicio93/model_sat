@@ -348,18 +348,3 @@ def get_multi_sat(start_date: str,
         _logger.warning("No satellite datasets were successfully processed.")
 
     return None
-
-if __name__ == "__main__":
-    get_multi_sat(
-                  start_date="2019-06-01",
-                  end_date="2019-11-15",
-                  sat_list=['sentinel3a','sentinel3b','jason2','jason3','cryosat2','saral'],
-                  output_dir="./sat_data",
-                  lat_min=49.109,
-                  lat_max=66.304309,
-                  lon_min=156.6854,
-                  lon_max=-156.864,
-                  concat=True,
-                  clean_raw=False,
-                  clean_cropped=False
-                 )
