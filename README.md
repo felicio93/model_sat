@@ -9,7 +9,7 @@ pip install git+https://github.com/felicio93/model_sat
 ```
 ## Usage
 ```
-from satmodel import get_sat
+from model_sat import get_sat
 
 get_sat(
     start_date="2019-06-01",
