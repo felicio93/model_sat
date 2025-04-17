@@ -6,6 +6,8 @@ import scipy
 import xarray as xr
 import ocsmesh
 
+from tqdm import tqdm
+
 # Set up logging
 logging.basicConfig(
     level=logging.WARNING,
@@ -74,7 +76,7 @@ def temporal_collocation_nearest(ds_sat: xr.Dataset,
         model_times: array of model output times (e.g., model_ds['time'].values)
         time_buffer: time margin around model times
                      to include satellite observations
-                     (e.g., np.timedelta64(30, 'm') for ±30 minutes)
+                     (e.g., np.timedelta64(30, 'm') ±30 minutes)
 
     Returns:
         ds_sat_subset: satellite data filtered within the model time range
@@ -218,7 +220,7 @@ def extract_model_data(m_file: xr.DataArray,
         depths: 2D array of model depths at the same nodes [n_points, n_nearest]
 
     Notes:
-        This works for SCHISM only, may add other models in the future
+        This works SCHISM only, may add other models in the future
     """
     _logger.info("Performing model data extraction")
     values, depths = [], []
@@ -295,7 +297,7 @@ def collocate_data(model_files: list[xr.DataArray],
         'model_swh_weighted': []
     }
 
-    for m_file in model_files:
+    for m_file in tqdm(model_files, desc="Processing model files"):
         _logger.info("Processing model file: %s", m_file)
         if temporal_interp:
             # Perform temporal interpolation
