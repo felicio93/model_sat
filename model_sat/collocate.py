@@ -392,32 +392,3 @@ def collocate_data(model_files: list[xr.DataArray],
             _logger.error("Unsupported output format. Use .nc or .parquet")
 
     return ds_out
-
-if __name__ == "__main__":
-    rundir = r'C:\Users\Felicio.Cassalho\Work\Modeling\AK_Project\WaveCu_paper\R09b\\'
-    mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
-    dist_coast = xr.open_dataset(r'C:\Users\Felicio.Cassalho\Work\Modeling\AK_Project\WaveCu_paper\WaveTools\gridinfo/distFromCoast.nc')
-    ds_sat = xr.open_dataset(r"C:\Users\Felicio.Cassalho\Work\Modeling\AK_Project\WaveCu_paper\allsat.nc")
-
-    mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
-    mesh_y = mesh.vert2['coord'][:, 1]
-    mesh_depth = mesh.value.ravel()
-
-    model_files = [
-        xr.open_dataset(rundir + 'outputs/out2d_32.nc')['sigWaveHeight'],
-        xr.open_dataset(rundir + 'outputs/out2d_33.nc')['sigWaveHeight'],
-        xr.open_dataset(rundir + 'outputs/out2d_34.nc')['sigWaveHeight']
-    ]
-
-    collocated_data = collocate_data(model_files,
-                                     ds_sat,
-                                     mesh_x,
-                                     mesh_y,
-                                     mesh_depth,
-                                     dist_coast,
-                                     n_nearest=3,
-                                     time_buffer=np.timedelta64(30, 'm'),
-                                     weight_power=1.0,
-                                     temporal_interp=True,  # Set to True for interpolation, False for nearest time matching
-                                     output_path=r"C:\Users\Felicio.Cassalho\Work\Modeling\AK_Project\WaveCu_paper\sat_model_package\sat_data/collocated.nc",
-                                     )
