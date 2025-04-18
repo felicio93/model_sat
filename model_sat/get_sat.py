@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from typing import Union, Optional, List
 from tqdm import tqdm
 
-from model_sat.urls import URL_TEMPLATES
+# from model_sat.urls import URL_TEMPLATES
+from urls import URL_TEMPLATES
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -267,17 +268,16 @@ def get_sat(start_date: str,
     else:
         for file_path in raw_files:
             try:
-                ds = xr.open_dataset(file_path)
-                ds.load()
-                datasets_to_concat.append(ds)
+                with xr.open_dataset(file_path) as ds:
+                    ds.load()
+                    datasets_to_concat.append(ds)
             except Exception as e:
                 _logger.warning(f"Failed to load \
                                 {file_path}: {type(e).__name__} - {e}")
 
     final_dataset = None
     if concat and datasets_to_concat:
-        concat_filename = f"concat_{'cropped_' if cropping_enabled else ''}\
-            {sat}_{start_date}_{end_date}.nc"
+        concat_filename = f"concat_{'cropped_' if cropping_enabled else ''}{sat}_{start_date}_{end_date}.nc"
         concat_path = os.path.join(output_dir, concat_filename)
         final_dataset = concat_sat_data(datasets_to_concat, concat_path, sat)
 
@@ -336,9 +336,7 @@ def get_multi_sat(start_date: str,
 
     if all_sat:
         try:
-            multisat_filename = f"multisat_\
-                {'cropped_' if lat_min is not None else ''}{start_date}_\
-                    {end_date}.nc"
+            multisat_filename = f"multisat_{'cropped_' if lat_min is not None else ''}{start_date}_{end_date}.nc"
             multisat_path = os.path.join(output_dir, multisat_filename)
             all_sat_ds = xr.concat(all_sat, dim='time')
             all_sat_ds.to_netcdf(multisat_path)
@@ -352,3 +350,21 @@ def get_multi_sat(start_date: str,
         _logger.warning("No satellite datasets were successfully processed.")
 
     return None
+
+def hercules_R09b():
+    get_multi_sat(
+                  start_date="2019-07-01",
+                  end_date="2019-11-15",
+                  sat_list=['sentinel3a','sentinel3b','jason2','jason3','cryosat2','saral'],
+                  output_dir=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/",
+                  lat_min=49.109,
+                  lat_max=66.304309,
+                  lon_min=156.6854,
+                  lon_max=-156.864,
+                  concat=True,
+                  clean_raw=False,
+                  clean_cropped=False
+                 ) 
+
+if __name__ == "__main__":
+    hercules_R09b()

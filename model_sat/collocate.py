@@ -1,4 +1,6 @@
 import logging
+import os
+import re
 from typing import Union, Optional, List
 
 import numpy as np
@@ -62,6 +64,54 @@ def inverse_distance_weights(dists: np.ndarray,
 
     weights = 1 / np.power(np.maximum(dists, 1e-6), power)
     return weights / weights.sum(axis=1, keepdims=True)
+
+
+def select_model_files_in_timerange(rundir: str,
+                                    start_date: np.datetime64,
+                                    end_date: np.datetime64
+                                    ) -> list[str]:
+    """
+    Select model output NetCDF files within a given time range using os module.
+
+    Args:
+        rundir: path to the model run directory (expects outputs in rundir/outputs/)
+        start_date: inclusive start time (np.datetime64)
+        end_date: inclusive end time (np.datetime64)
+
+    Returns:
+        List of file paths (strings) that fall within the time range
+    """
+    def natural_sort_key(filename):
+        """
+        Generates a sorting key that handles numbers correctly.
+        """
+        return [int(part) if part.isdigit() else part.lower()
+                for part in re.split(r'(\d+)', filename)]
+
+    output_dir = os.path.join(rundir, "outputs")
+    all_files = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+    all_files.sort(key=natural_sort_key)
+    selected_files = []
+
+    for fname in all_files:
+        if not fname.startswith("out2d_") or not fname.endswith(".nc"):
+            continue
+
+        path = os.path.join(output_dir, fname)
+        try:
+            with xr.open_dataset(path, decode_times=False) as ds:
+                if 'time' not in ds.variables:
+                    continue
+                times = ds['time'].values
+                times = xr.decode_cf(ds[['time']])['time'].values  # decode only time
+
+                if times[-1] >= start_date and times[0] <= end_date:
+                    selected_files.append(path)
+        except Exception as e:
+            _logger.warning(f"Error reading {path}: {e}")
+            continue
+
+    return selected_files
 
 
 def temporal_collocation_nearest(ds_sat: xr.Dataset,
@@ -242,7 +292,8 @@ def extract_model_data(m_file: xr.DataArray,
     return np.array(values), np.array(depths)
 
 
-def collocate_data(model_files: list[xr.DataArray],
+def collocate_data(model_file_paths: list[str],
+                   variable_name: str,
                    ds_sat: xr.Dataset,
                    mesh_x: np.ndarray,
                    mesh_y: np.ndarray,
@@ -297,8 +348,10 @@ def collocate_data(model_files: list[xr.DataArray],
         'model_swh_weighted': []
     }
 
-    for m_file in tqdm(model_files, desc="Processing model files"):
-        _logger.info("Processing model file: %s", m_file)
+    for path in tqdm(model_file_paths, desc="Processing model files"):
+        _logger.info("Opening model file: %s", path)
+        ds = xr.open_dataset(path)
+        m_file = ds[variable_name]
         if temporal_interp:
             # Perform temporal interpolation
             ds_sat_subset, ib, ia, weights, nearest_model_times, time_dt = temporal_collocation_interpolated(
@@ -394,3 +447,36 @@ def collocate_data(model_files: list[xr.DataArray],
             _logger.error("Unsupported output format. Use .nc or .parquet")
 
     return ds_out
+
+def hercules_R09b():
+    rundir = r'/work2/noaa/nos-surge/felicioc/BeringSea/R09b/'
+    variable_name = 'sigWaveHeight'
+    start_date = np.datetime64('2019-08-01')
+    end_date = np.datetime64('2019-10-31')
+
+    print('Select matching model files')
+    model_paths = select_model_files_in_timerange(rundir, start_date, end_date)
+    print('Finished selecting model files')
+
+    mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
+    dist_coast = xr.open_dataset(r'/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/distFromCoast.nc')
+    ds_sat = xr.open_dataset(r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/multisat_cropped_2019-07-01_2019-11-15.nc")
+
+    mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
+    mesh_y = mesh.vert2['coord'][:, 1]
+    mesh_depth = mesh.value.ravel()
+
+    collocate_data(model_paths,
+                   variable_name,
+                   ds_sat,
+                   mesh_x,
+                   mesh_y,
+                   mesh_depth,
+                   dist_coast,
+                   n_nearest=3,
+                   time_buffer=np.timedelta64(30, 'm'),
+                   weight_power=1.0,
+                   temporal_interp=True,
+                   output_path=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/collocated.nc")
+if __name__ == "__main__":
+    hercules_R09b()
