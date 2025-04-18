@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from typing import Union, Optional, List
 from tqdm import tqdm
 
-# from model_sat.urls import URL_TEMPLATES
-from urls import URL_TEMPLATES
+from model_sat.urls import URL_TEMPLATES
+# from urls import URL_TEMPLATES
 
 logging.basicConfig(
     level=logging.WARNING,
