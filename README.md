@@ -46,5 +46,5 @@ collocated = collocate.collocate_data(model_paths,
                                       time_buffer=np.timedelta64(30, 'm'),
                                       weight_power=1.0,
                                       temporal_interp=True,
-                                      output_path=output_dir)
+                                      output_path=output_dir+"collocated.nc")
 ```
