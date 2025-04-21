@@ -68,7 +68,8 @@ def inverse_distance_weights(dists: np.ndarray,
 
 def select_model_files_in_timerange(rundir: str,
                                     start_date: np.datetime64,
-                                    end_date: np.datetime64
+                                    end_date: np.datetime64,
+                                    model: str = "SCHISM",
                                     ) -> list[str]:
     """
     Select model output NetCDF files within a given time range using os module.
@@ -81,35 +82,40 @@ def select_model_files_in_timerange(rundir: str,
     Returns:
         List of file paths (strings) that fall within the time range
     """
-    def natural_sort_key(filename):
-        """
-        Generates a sorting key that handles numbers correctly.
-        """
-        return [int(part) if part.isdigit() else part.lower()
-                for part in re.split(r'(\d+)', filename)]
 
-    output_dir = os.path.join(rundir, "outputs")
-    all_files = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
-    all_files.sort(key=natural_sort_key)
-    selected_files = []
+    if model == "SCHISM":
+        def natural_sort_key(filename):
+            """
+            Generates a sorting key that handles numbers correctly.
+            """
+            return [int(part) if part.isdigit() else part.lower()
+                    for part in re.split(r'(\d+)', filename)]
+    
+        output_dir = os.path.join(rundir, "outputs")
+        all_files = [f for f in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, f))]
+        all_files.sort(key=natural_sort_key)
+        selected_files = []
+    
+        for fname in all_files:
+            if not fname.startswith("out2d_") or not fname.endswith(".nc"):
+                continue
+    
+            path = os.path.join(output_dir, fname)
+            try:
+                with xr.open_dataset(path, decode_times=False) as ds:
+                    if 'time' not in ds.variables:
+                        continue
+                    times = ds['time'].values
+                    times = xr.decode_cf(ds[['time']])['time'].values  # decode only time
+    
+                    if times[-1] >= start_date and times[0] <= end_date:
+                        selected_files.append(path)
+            except Exception as e:
+                _logger.warning(f"Error reading {path}: {e}")
+                continue
 
-    for fname in all_files:
-        if not fname.startswith("out2d_") or not fname.endswith(".nc"):
-            continue
-
-        path = os.path.join(output_dir, fname)
-        try:
-            with xr.open_dataset(path, decode_times=False) as ds:
-                if 'time' not in ds.variables:
-                    continue
-                times = ds['time'].values
-                times = xr.decode_cf(ds[['time']])['time'].values  # decode only time
-
-                if times[-1] >= start_date and times[0] <= end_date:
-                    selected_files.append(path)
-        except Exception as e:
-            _logger.warning(f"Error reading {path}: {e}")
-            continue
+    else:
+        _logger.error(f"Error: {model} not implemented")
 
     return selected_files
 
@@ -245,6 +251,7 @@ def extract_model_data(m_file: xr.DataArray,
                        model_depth: np.ndarray,
                        times_or_inds: np.ndarray,
                        nearest_nodes: np.ndarray,
+                       model: str = "SCHISM",
                        interpolate: bool = False,
                        inds_after: Optional[np.ndarray] = None,
                        weights: Optional[np.ndarray] = None) -> tuple:
@@ -258,6 +265,7 @@ def extract_model_data(m_file: xr.DataArray,
         times_or_inds: array of either datetime64 values (if interpolate=False)
                        or indices of the first time step (if interpolate=True)
         nearest_nodes: 2D array of node indices [n_points, n_nearest]
+        model: For not it only works for "SCHISM"
         interpolate: whether to perform linear time
                      interpolation (default=False)
         inds_after: indices of the time step after each
@@ -272,23 +280,26 @@ def extract_model_data(m_file: xr.DataArray,
     Notes:
         This works SCHISM only, may add other models in the future
     """
-    _logger.info("Performing model data extraction")
+    _logger.info("Performing {model} model data extraction")
     values, depths = [], []
 
-    for i, nodes in enumerate(nearest_nodes):
-        if interpolate:
-            ib, ia = times_or_inds[i], inds_after[i]
-            w = weights[i]
-            v0 = m_file.isel(time=ib, nSCHISM_hgrid_node=nodes).values
-            v1 = m_file.isel(time=ia, nSCHISM_hgrid_node=nodes).values
-            values.append(v0 * (1 - w) + v1 * w)
-        else:
-            t = times_or_inds[i]
-            values.append(m_file.sel(time=t, nSCHISM_hgrid_node=nodes).values)
-
-        depths.append(model_depth[nodes])
+    if model == "SCHISM":
+        for i, nodes in enumerate(nearest_nodes):
+            if interpolate:
+                ib, ia = times_or_inds[i], inds_after[i]
+                w = weights[i]
+                v0 = m_file.isel(time=ib, nSCHISM_hgrid_node=nodes).values
+                v1 = m_file.isel(time=ia, nSCHISM_hgrid_node=nodes).values
+                values.append(v0 * (1 - w) + v1 * w)
+            else:
+                t = times_or_inds[i]
+                values.append(m_file.sel(time=t, nSCHISM_hgrid_node=nodes).values)
+            depths.append(model_depth[nodes])
+    else:
+        _logger.error(f"Error: {model} not implemented")
 
     _logger.info("Model data extraction complete")
+
     return np.array(values), np.array(depths)
 
 
@@ -445,6 +456,7 @@ def collocate_data(model_file_paths: list[str],
                    mesh_y: np.ndarray,
                    mesh_depth: np.ndarray,
                    dist_coast: xr.Dataset,
+                   model: str: "SCHISM",
                    n_nearest: int = 3,
                    time_buffer: np.timedelta64 = np.timedelta64(30, 'm'),
                    weight_power: float = 1.0,
@@ -463,6 +475,7 @@ def collocate_data(model_file_paths: list[str],
         mesh_depth: array of model node depths
         dist_coast: xarray Dataset containing 'distcoast' variable with 
                     distance from the coast
+        model: For not it only works for "SCHISM"
         n_nearest: number of nearest model nodes to consider (default=3)
         time_buffer: time margin around model data range to search 
                      satellite data (default=30 minutes)
@@ -505,7 +518,7 @@ def collocate_data(model_file_paths: list[str],
             )
             dists, inds = spatial_collocation(ds_sat_subset, tree, n_nearest)
             nearest_model_values, nearest_model_depths = extract_model_data(
-                m_file, mesh_depth, ib, inds, interpolate=True, inds_after=ia,
+                m_file, mesh_depth, ib, inds, model, interpolate=True, inds_after=ia,
                 weights=weights
             )
         else:
@@ -515,7 +528,7 @@ def collocate_data(model_file_paths: list[str],
             )
             dists, inds = spatial_collocation(ds_sat_subset, tree, n_nearest)
             nearest_model_values, nearest_model_depths = extract_model_data(
-                m_file, mesh_depth, nearest_model_times, inds, interpolate=False
+                m_file, mesh_depth, nearest_model_times, inds, model, interpolate=False,
             )
 
         # Weighted spatial average using inverse distance
@@ -575,9 +588,10 @@ if __name__ == "__main__":
         variable_name = 'sigWaveHeight'
         start_date = np.datetime64('2019-08-01')
         end_date = np.datetime64('2019-10-31')
+        model="SCHISM"
 
         print('Select matching model files')
-        model_paths = select_model_files_in_timerange(rundir, start_date, end_date)
+        model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model="SCHISM")
         print('Finished selecting model files')
 
         mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
@@ -595,6 +609,7 @@ if __name__ == "__main__":
                     mesh_y,
                     mesh_depth,
                     dist_coast,
+                    model,
                     n_nearest=3,
                     time_buffer=np.timedelta64(30, 'm'),
                     weight_power=1.0,
