@@ -456,7 +456,7 @@ def collocate_data(model_file_paths: list[str],
                    mesh_y: np.ndarray,
                    mesh_depth: np.ndarray,
                    dist_coast: xr.Dataset,
-                   model: str: "SCHISM",
+                   model: str = "SCHISM",
                    n_nearest: int = 3,
                    time_buffer: np.timedelta64 = np.timedelta64(30, 'm'),
                    weight_power: float = 1.0,
@@ -591,7 +591,7 @@ if __name__ == "__main__":
         model="SCHISM"
 
         print('Select matching model files')
-        model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model="SCHISM")
+        model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model)
         print('Finished selecting model files')
 
         mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
