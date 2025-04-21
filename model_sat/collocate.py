@@ -292,6 +292,152 @@ def extract_model_data(m_file: xr.DataArray,
     return np.array(values), np.array(depths)
 
 
+def make_collocated_nc(results: dict,
+                       ) -> xr.Dataset:
+    """
+    Converts the results dict to a CF 1.7 complient netcdfile
+
+    Args:
+        results: Dictionary with the variables and attributes to be used
+                 to  build the collocated netcdf file
+
+    Returns:
+        values: xArray Dataset with the CF 1.7-complient collocated .nc file
+
+    Notes:
+        If the final .nc file format is not ideal, change this function
+    """
+    ds = xr.Dataset(
+        {
+            'sat_swh': (['time_sat'],
+                        np.concatenate(results['sat_swh'])),
+            'model_swh': (['time_sat',
+                           'nearest_nodes'],
+                          np.vstack(results['model_swh'])),
+            'model_swh_weighted': (['time_sat'],
+                                   np.concatenate(results['model_swh_weighted'])),
+            'model_dpt': (['time_sat', 'nearest_nodes'],
+                          np.vstack(results['model_dpt'])),
+            'dist_deltas': (['time_sat', 'nearest_nodes'],
+                            np.vstack(results['dist_deltas'])),
+            'node_ids': (['time_sat', 'nearest_nodes'],
+                         np.vstack(results['node_ids'])),
+            'time_deltas': (['time_sat'],
+                            np.concatenate(results['time_deltas'])),
+            'bias_raw': (['time_sat'],
+                         np.concatenate(results['bias_raw'])),
+            'bias_weighted': (['time_sat'],
+                              np.concatenate(results['bias_weighted'])),
+            'dist_coast': (['time_sat'],
+                           np.concatenate(results['dist_coast'])),
+            'source_sat': (['time_sat'],
+                           np.concatenate(results['source_sat'])),
+        },
+        coords={
+            'time': np.concatenate(results['time_sat']),
+            'lat': np.concatenate(results['lat_sat']),
+            'lon': np.concatenate(results['lon_sat']),
+            'nearest_nodes': np.arange(n_nearest),
+        })
+    # Assign CF-compliant attributes
+    ds["time"].attrs = {
+        "standard_name": "time",
+        "long_name": "Satellite observation time",
+        "units": "seconds since 1970-01-01 00:00:00",
+        "calendar": "gregorian"
+    }
+    ds["latitude"].attrs = {
+        "standard_name": "latitude",
+        "long_name": "Latitude of satellite observation",
+        "units": "degrees_north"
+    }
+
+    ds["longitude"].attrs = {
+        "standard_name": "longitude",
+        "long_name": "Longitude of satellite observation",
+        "units": "degrees_east"
+    }
+    # Assign CF-compliant variables
+    ds["sat_swh"].attrs = {
+        "standard_name": "sea_surface_wave_significant_height",
+        "long_name": "Ku-band significant wave height",
+        "units": "m",
+        "coordinates": "time"
+    }
+    ds["model_swh"].attrs = {
+        "standard_name": "sea_surface_wave_significant_height",
+        "long_name": "Significant Wave Height from Model",
+        "units": "m",
+        "coordinates": "time nearest_nodes",
+        "comment": "model swh for the n_nearest model nodes",
+    }
+    ds["model_swh_weighted"].attrs = {
+        "long_name": "Averaged Significant Wave Height from Model",
+        "units": "m",
+        "coordinates": "time",
+        "comment": "IDW averaged model swh",
+    }
+    ds["model_dpt"].attrs = {
+        "standard_name": "sea_floor_depth_below_sea_surface",
+        "long_name": "Averaged Sea Floor Depth Below Sea Surface from Model",
+        "units": "m",
+        "coordinates": "time nearest_nodes",
+        "comment": "IDW averaged model depth",
+    }
+    ds["dist_deltas"].attrs = {
+        "long_name": "Distances between the satellite track and the n_neares model nodes",
+        "units": "degrees",
+        "coordinates": "time nearest_nodes",
+        "comment": "dist_deltas has the same units as the model and satellite lat and lon",
+    }
+    ds["node_ids"].attrs = {
+        "long_name": "Model Node ID for the n_nearest nodes",
+        "units": "1",
+        "coordinates": "time nearest_nodes",
+        "comment": "nearest model nodes to the satellite track",
+    }
+    ds["bias_raw"].attrs = {
+        "long_name": "Raw Bias Between Satellite and Model SWH",
+        "units": "m",
+        "coordinates": "time",
+        "comment": "Computed as satellite SWH minus model SWH"
+    }
+    ds["bias_weighted"].attrs = {
+        "long_name": "Weighted Bias Between Satellite and Model SWH",
+        "units": "m",
+        "coordinates": "time",
+        "comment": "Computed using inverse distance weighted model SWH"
+    }
+    ds["dist_coast"].attrs = {
+        "standard_name": "distance_to_coast",
+        "long_name": "Distance from Observation to Nearest Coastline",
+        "units": "km",
+        "coordinates": "time",
+        "comment": "Computed as great-circle distance from point to coast"
+    }
+    ds["time_deltas"].attrs = {
+        "long_name": "Time Difference Between Model and Satellite",
+        "units": "seconds",
+        "coordinates": "time",
+        "comment": "Positive if model time is after satellite time"
+    }
+    ds["source_sat"].attrs = {
+        "long_name": "Satellite Source Identifier",
+        "units": "",
+        "coordinates": "time",
+        "comment": "E.g., CryoSat-2, Sentinel-3A"
+    }
+    # Add global attributes
+    ds.attrs["Conventions"] = "CF-1.7"
+    ds.attrs["title"] = "CF-compliant Satellite vs Model SWH Dataset"
+    ds.attrs["institution"] = "NOAA/NOS/OCS/Coast Survey Development Laboratory"
+    ds.attrs["source"] = "Satellite altimetry + model data"
+    ds.attrs["history"] = "Converted to CF-1.7 using xarray"
+    ds.attrs["references"] = "http://cfconventions.org/"
+
+    return ds
+
+
 def collocate_data(model_file_paths: list[str],
                    variable_name: str,
                    ds_sat: xr.Dataset,
@@ -401,39 +547,11 @@ def collocate_data(model_file_paths: list[str],
         results['source_sat'].append(ds_sat_subset['source'].values)
 
     _logger.info("Collocation complete, saving output")
-    ds_out = xr.Dataset(
-        {
-            'sat_swh': (['time_sat'],
-                        np.concatenate(results['sat_swh'])),
-            'model_swh': (['time_sat',
-                           'nearest_nodes'],
-                          np.vstack(results['model_swh'])),
-            'model_swh_weighted': (['time_sat'],
-                                   np.concatenate(results['model_swh_weighted'])),
-            'model_dpt': (['time_sat', 'nearest_nodes'],
-                          np.vstack(results['model_dpt'])),
-            'dist_deltas': (['time_sat', 'nearest_nodes'],
-                            np.vstack(results['dist_deltas'])),
-            'node_ids': (['time_sat', 'nearest_nodes'],
-                         np.vstack(results['node_ids'])),
-            'time_deltas': (['time_sat'],
-                            np.concatenate(results['time_deltas'])),
-            'bias_raw': (['time_sat'],
-                         np.concatenate(results['bias_raw'])),
-            'bias_weighted': (['time_sat'],
-                              np.concatenate(results['bias_weighted'])),
-            'dist_coast': (['time_sat'],
-                           np.concatenate(results['dist_coast'])),
-            'source_sat': (['time_sat'],
-                           np.concatenate(results['source_sat'])),
-        },
-        coords={
-            'time_sat': np.concatenate(results['time_sat']),
-            'lat_sat': np.concatenate(results['lat_sat']),
-            'lon_sat': np.concatenate(results['lon_sat']),
-            'nearest_nodes': np.arange(n_nearest),
-        }
-    )
+
+    try:
+        ds_out = make_collocated_nc(results)
+    except Exception as e:
+        raise ValueError("Failed to build the collocated netcdf file")
 
     if output_path:
         if output_path.endswith('.nc'):
@@ -448,35 +566,38 @@ def collocate_data(model_file_paths: list[str],
 
     return ds_out
 
-def hercules_R09b():
-    rundir = r'/work2/noaa/nos-surge/felicioc/BeringSea/R09b/'
-    variable_name = 'sigWaveHeight'
-    start_date = np.datetime64('2019-08-01')
-    end_date = np.datetime64('2019-10-31')
 
-    print('Select matching model files')
-    model_paths = select_model_files_in_timerange(rundir, start_date, end_date)
-    print('Finished selecting model files')
-
-    mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
-    dist_coast = xr.open_dataset(r'/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/distFromCoast.nc')
-    ds_sat = xr.open_dataset(r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/multisat_cropped_2019-07-01_2019-11-15.nc")
-
-    mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
-    mesh_y = mesh.vert2['coord'][:, 1]
-    mesh_depth = mesh.value.ravel()
-
-    collocate_data(model_paths,
-                   variable_name,
-                   ds_sat,
-                   mesh_x,
-                   mesh_y,
-                   mesh_depth,
-                   dist_coast,
-                   n_nearest=3,
-                   time_buffer=np.timedelta64(30, 'm'),
-                   weight_power=1.0,
-                   temporal_interp=True,
-                   output_path=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/collocated.nc")
 if __name__ == "__main__":
+
+    # Testing (Felicio):
+    def hercules_R09b():
+        rundir = r'/work2/noaa/nos-surge/felicioc/BeringSea/R09b/'
+        variable_name = 'sigWaveHeight'
+        start_date = np.datetime64('2019-08-01')
+        end_date = np.datetime64('2019-10-31')
+
+        print('Select matching model files')
+        model_paths = select_model_files_in_timerange(rundir, start_date, end_date)
+        print('Finished selecting model files')
+
+        mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
+        dist_coast = xr.open_dataset(r'/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/distFromCoast.nc')
+        ds_sat = xr.open_dataset(r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/multisat_cropped_2019-07-01_2019-11-15.nc")
+
+        mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
+        mesh_y = mesh.vert2['coord'][:, 1]
+        mesh_depth = mesh.value.ravel()
+
+        collocate_data(model_paths,
+                    variable_name,
+                    ds_sat,
+                    mesh_x,
+                    mesh_y,
+                    mesh_depth,
+                    dist_coast,
+                    n_nearest=3,
+                    time_buffer=np.timedelta64(30, 'm'),
+                    weight_power=1.0,
+                    temporal_interp=True,
+                    output_path=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/collocated.nc")
     hercules_R09b()
