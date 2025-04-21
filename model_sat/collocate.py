@@ -304,6 +304,7 @@ def extract_model_data(m_file: xr.DataArray,
 
 
 def make_collocated_nc(results: dict,
+                       n_nearest: int,
                        ) -> xr.Dataset:
     """
     Converts the results dict to a CF 1.7 complient netcdfile
@@ -348,7 +349,7 @@ def make_collocated_nc(results: dict,
             'time': np.concatenate(results['time_sat']),
             'lat': np.concatenate(results['lat_sat']),
             'lon': np.concatenate(results['lon_sat']),
-            'nearest_nodes': np.arange(results['n_nearest']),
+            'nearest_nodes': np.arange(n_nearest),
         })
     # Assign CF-compliant attributes
     ds["time"].attrs = {
@@ -504,7 +505,7 @@ def collocate_data(model_file_paths: list[str],
         'dist_deltas': [], 'node_ids': [], 'time_deltas': [],
         'bias_raw': [], 'bias_weighted': [], 'dist_coast': [], 
         'source_sat': [], 'time_sat': [], 'lat_sat': [], 'lon_sat': [],
-        'model_swh_weighted': [], 'n_nearest': []
+        'model_swh_weighted': []
     }
 
     for path in tqdm(model_file_paths, desc="Processing model files"):
@@ -558,12 +559,11 @@ def collocate_data(model_file_paths: list[str],
         results['lat_sat'].append(lats)
         results['lon_sat'].append(ds_sat_subset['lon'].values)
         results['source_sat'].append(ds_sat_subset['source'].values)
-        results['n_nearest'].append(n_nearest)
 
     _logger.info("Collocation complete, saving output")
 
     try:
-        ds_out = make_collocated_nc(results)
+        ds_out = make_collocated_nc(results, n_nearest)
     except Exception as e:
         raise ValueError("Failed to build the collocated netcdf file")
 
