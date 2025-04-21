@@ -351,20 +351,22 @@ def get_multi_sat(start_date: str,
 
     return None
 
-def hercules_R09b():
-    get_multi_sat(
-                  start_date="2019-07-01",
-                  end_date="2019-11-15",
-                  sat_list=['sentinel3a','sentinel3b','jason2','jason3','cryosat2','saral'],
-                  output_dir=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/",
-                  lat_min=49.109,
-                  lat_max=66.304309,
-                  lon_min=156.6854,
-                  lon_max=-156.864,
-                  concat=True,
-                  clean_raw=False,
-                  clean_cropped=False
-                 ) 
-
 if __name__ == "__main__":
+
+    # Testing (Felicio):
+    def hercules_R09b():
+        get_multi_sat(
+                    start_date="2019-07-01",
+                    end_date="2019-11-15",
+                    sat_list=['sentinel3a','sentinel3b','jason2','jason3','cryosat2','saral'],
+                    output_dir=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/",
+                    lat_min=49.109,
+                    lat_max=66.304309,
+                    lon_min=156.6854,
+                    lon_max=-156.864,
+                    concat=True,
+                    clean_raw=False,
+                    clean_cropped=False
+                    ) 
+
     hercules_R09b()
