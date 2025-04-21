@@ -358,13 +358,13 @@ def make_collocated_nc(results: dict,
         "units": "seconds since 1970-01-01 00:00:00",
         "calendar": "gregorian"
     }
-    ds["latitude"].attrs = {
+    ds["lat"].attrs = {
         "standard_name": "latitude",
         "long_name": "Latitude of satellite observation",
         "units": "degrees_north"
     }
 
-    ds["longitude"].attrs = {
+    ds["lon"].attrs = {
         "standard_name": "longitude",
         "long_name": "Longitude of satellite observation",
         "units": "degrees_east"
