@@ -321,6 +321,10 @@ def make_collocated_nc(results: dict,
     """
     ds = xr.Dataset(
         {
+            'lon': (['time_sat'],
+                    np.concatenate(results['lon_sat'])),
+            'lat': (['time_sat'],
+                    np.concatenate(results['lat_sat'])),
             'sat_swh': (['time_sat'],
                         np.concatenate(results['sat_swh'])),
             'model_swh': (['time_sat',
@@ -347,8 +351,6 @@ def make_collocated_nc(results: dict,
         },
         coords={
             'time': np.concatenate(results['time_sat']),
-            'lat': np.concatenate(results['lat_sat']),
-            'lon': np.concatenate(results['lon_sat']),
             'nearest_nodes': np.arange(n_nearest),
         })
     # Assign CF-compliant attributes
