@@ -7,12 +7,12 @@ setup(
     description='Satellite data download, crop, and collocation with model output',
     packages=find_packages(),
     install_requires=[
+        'ocsmesh',  # Optional if you want users to install it
         'numpy',
         'xarray',
         'requests',
         'scipy',
         'tqdm',
-        'ocsmesh',  # Optional if you want users to install it
     ],
-    python_requires='>=3.10',
+    python_requires='>=3.8',
 )
