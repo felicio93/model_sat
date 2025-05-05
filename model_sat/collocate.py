@@ -354,12 +354,12 @@ def make_collocated_nc(results: dict,
             'nearest_nodes': np.arange(n_nearest),
         })
     # Assign CF-compliant attributes
-    ds["time"].attrs = {
-        "standard_name": "time",
-        "long_name": "Satellite observation time",
-        "units": "seconds since 1970-01-01 00:00:00",
-        "calendar": "gregorian"
-    }
+    # ds["time"].attrs = {
+    #     "standard_name": "time",
+    #     "long_name": "Satellite observation time",
+    #     "units": "seconds since 1970-01-01 00:00:00",
+    #     "calendar": "gregorian"
+    # }
     ds["lat"].attrs = {
         "standard_name": "latitude",
         "long_name": "Latitude of satellite observation",
