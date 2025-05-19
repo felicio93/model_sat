@@ -590,8 +590,8 @@ def collocate_data(model_file_paths: list[str],
     return ds_out
 
 def hercules_R09_10():
-    run='R09b'
-    rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{run}/'
+    runs=['R09a','R09b','R10b']
+    rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
     variable_name = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
     start_date = np.datetime64('2019-08-01')
     end_date = np.datetime64('2019-10-31')
@@ -603,46 +603,49 @@ def hercules_R09_10():
     mesh_y = mesh.vert2['coord'][:, 1]
     mesh_depth = mesh.value.ravel()
 
-    for variable in variable_name:
-        print(f'Starting Variable: {variable}')
+    for run in runs:
+        print(f'starting run: {run}')
+        for variable in variable_name:
+            print(f'Starting Variable: {variable}')
+    
+            if variable_name == 'sigWaveHeight':
+                model_dict = {'var': 'sigWaveHeight',
+                            'startswith': 'out2d_',
+                            'var_type': '2D',
+                            'model': 'SCHISM'}
+            if variable_name == 'elevation':
+                model_dict = {'var': 'elevation',
+                            'startswith': 'out2d_',
+                            'var_type': '2D',
+                            'model': 'SCHISM'}
+            if variable_name == 'horizontalVelX':
+                model_dict = {'var': 'horizontalVelX',
+                            'startswith': 'horizontalVelX',
+                            'var_type': '3D',
+                            'model': 'SCHISM'}
+            if variable_name == 'horizontalVelY':
+                model_dict = {'var': 'horizontalVelY',
+                            'startswith': 'horizontalVelY',
+                            'var_type': '3D',
+                            'model': 'SCHISM'}
+    
+            print('Select matching model files')
+            model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model_dict)
+            print('Finished selecting model files')
+    
+            collocate_data(model_paths,
+                        model_dict,
+                        ds_sat,
+                        mesh_x,
+                        mesh_y,
+                        mesh_depth,
+                        dist_coast,
+                        n_nearest=3,
+                        time_buffer=np.timedelta64(30, 'm'),
+                        weight_power=1.0,
+                        temporal_interp=True,
+                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable}.nc")
 
-        if variable_name == 'sigWaveHeight':
-            model_dict = {'var': 'sigWaveHeight',
-                        'startswith': 'out2d_',
-                        'var_type': '2D',
-                        'model': 'SCHISM'}
-        if variable_name == 'elevation':
-            model_dict = {'var': 'elevation',
-                        'startswith': 'out2d_',
-                        'var_type': '2D',
-                        'model': 'SCHISM'}
-        if variable_name == 'horizontalVelX':
-            model_dict = {'var': 'horizontalVelX',
-                        'startswith': 'horizontalVelX',
-                        'var_type': '3D',
-                        'model': 'SCHISM'}
-        if variable_name == 'horizontalVelY':
-            model_dict = {'var': 'horizontalVelY',
-                        'startswith': 'horizontalVelY',
-                        'var_type': '3D',
-                        'model': 'SCHISM'}
-
-        print('Select matching model files')
-        model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model_dict)
-        print('Finished selecting model files')
-
-        collocate_data(model_paths,
-                    model_dict,
-                    ds_sat,
-                    mesh_x,
-                    mesh_y,
-                    mesh_depth,
-                    dist_coast,
-                    n_nearest=3,
-                    time_buffer=np.timedelta64(30, 'm'),
-                    weight_power=1.0,
-                    temporal_interp=True,
-                    output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable}.nc")
 if __name__ == "__main__":
 
     # Testing (Felicio):
