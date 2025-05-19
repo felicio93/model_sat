@@ -644,7 +644,7 @@ def hercules_R09_10():
                         time_buffer=np.timedelta64(30, 'm'),
                         weight_power=1.0,
                         temporal_interp=True,
-                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable}.nc")
+                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable_name}.nc")
 
 if __name__ == "__main__":
 
