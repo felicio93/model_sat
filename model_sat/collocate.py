@@ -590,9 +590,9 @@ def collocate_data(model_file_paths: list[str],
     return ds_out
 
 def hercules_R09_10():
-    runs=['R09a','R09b','R10b']
+    runs = ['R09a','R09b','R10b']
     rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
-    variable_name = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
+    variable_names = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
     start_date = np.datetime64('2019-08-01')
     end_date = np.datetime64('2019-10-31')
 
@@ -605,8 +605,8 @@ def hercules_R09_10():
 
     for run in runs:
         print(f'starting run: {run}')
-        for variable in variable_name:
-            print(f'Starting Variable: {variable}')
+        for variable_name in variable_names:
+            print(f'Starting Variable: {variable_name')
     
             if variable_name == 'sigWaveHeight':
                 model_dict = {'var': 'sigWaveHeight',
