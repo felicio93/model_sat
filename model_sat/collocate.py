@@ -69,7 +69,7 @@ def inverse_distance_weights(dists: np.ndarray,
 def select_model_files_in_timerange(rundir: str,
                                     start_date: np.datetime64,
                                     end_date: np.datetime64,
-                                    model: str = "SCHISM",
+                                    model_dict: dict,
                                     ) -> list[str]:
     """
     Select model output NetCDF files within a given time range using os module.
@@ -83,7 +83,7 @@ def select_model_files_in_timerange(rundir: str,
         List of file paths (strings) that fall within the time range
     """
 
-    if model == "SCHISM":
+    if model_dict['model'] == "SCHISM":
         def natural_sort_key(filename):
             """
             Generates a sorting key that handles numbers correctly.
@@ -97,7 +97,7 @@ def select_model_files_in_timerange(rundir: str,
         selected_files = []
     
         for fname in all_files:
-            if not fname.startswith("out2d_") or not fname.endswith(".nc"):
+            if not fname.startswith(f"{model_dict['startswith']}") or not fname.endswith(".nc"):
                 continue
     
             path = os.path.join(output_dir, fname)
@@ -115,7 +115,7 @@ def select_model_files_in_timerange(rundir: str,
                 continue
 
     else:
-        _logger.error(f"Error: {model} not implemented")
+        _logger.error(f"Error: {model_dict['model']} not implemented")
 
     return selected_files
 
@@ -187,6 +187,7 @@ def temporal_collocation_interpolated(ds_sat: xr.Dataset,
         time_dt: time difference (in seconds) between satellite and
                  closest model time
     """
+
     _logger.info("Performing temporal collocation (interpolated)")
     start_date = model_times.min() - time_buffer
     end_date = model_times.max() + time_buffer
@@ -280,16 +281,17 @@ def extract_model_data(m_file: xr.DataArray,
     Notes:
         This works SCHISM only, may add other models in the future
     """
-    _logger.info("Performing {model} model data extraction")
+    _logger.info(f"Performing {model} model data extraction")
+    m_file = m_file.values
     values, depths = [], []
-
     if model == "SCHISM":
         for i, nodes in enumerate(nearest_nodes):
             if interpolate:
                 ib, ia = times_or_inds[i], inds_after[i]
                 w = weights[i]
-                v0 = m_file.isel(time=ib, nSCHISM_hgrid_node=nodes).values
-                v1 = m_file.isel(time=ia, nSCHISM_hgrid_node=nodes).values
+                v0,v1 = m_file[ib][nodes],m_file[ia][nodes]
+                # v0 = m_file.isel(time=ib, nSCHISM_hgrid_node=nodes).values
+                # v1 = m_file.isel(time=ia, nSCHISM_hgrid_node=nodes).values
                 values.append(v0 * (1 - w) + v1 * w)
             else:
                 t = times_or_inds[i]
@@ -453,13 +455,12 @@ def make_collocated_nc(results: dict,
 
 
 def collocate_data(model_file_paths: list[str],
-                   variable_name: str,
+                   model_dict: dict,
                    ds_sat: xr.Dataset,
                    mesh_x: np.ndarray,
                    mesh_y: np.ndarray,
                    mesh_depth: np.ndarray,
                    dist_coast: xr.Dataset,
-                   model: str = "SCHISM",
                    n_nearest: int = 3,
                    time_buffer: np.timedelta64 = np.timedelta64(30, 'm'),
                    weight_power: float = 1.0,
@@ -513,7 +514,12 @@ def collocate_data(model_file_paths: list[str],
     for path in tqdm(model_file_paths, desc="Processing model files"):
         _logger.info("Opening model file: %s", path)
         ds = xr.open_dataset(path)
-        m_file = ds[variable_name]
+        if model_dict['var_type'] == '3D':
+            m_file = ds[model_dict['var']][:,:,-1]
+        elif model_dict['var_type'] == '2D':
+            m_file = ds[model_dict['var']]
+        del ds
+
         if temporal_interp:
             # Perform temporal interpolation
             ds_sat_subset, ib, ia, weights, nearest_model_times, time_dt = temporal_collocation_interpolated(
@@ -521,7 +527,7 @@ def collocate_data(model_file_paths: list[str],
             )
             dists, inds = spatial_collocation(ds_sat_subset, tree, n_nearest)
             nearest_model_values, nearest_model_depths = extract_model_data(
-                m_file, mesh_depth, ib, inds, model, interpolate=True, inds_after=ia,
+                m_file, mesh_depth, ib, inds, model_dict['model'], interpolate=True, inds_after=ia,
                 weights=weights
             )
         else:
@@ -531,8 +537,9 @@ def collocate_data(model_file_paths: list[str],
             )
             dists, inds = spatial_collocation(ds_sat_subset, tree, n_nearest)
             nearest_model_values, nearest_model_depths = extract_model_data(
-                m_file, mesh_depth, nearest_model_times, inds, model, interpolate=False,
+                m_file, mesh_depth, nearest_model_times, inds, model_dict['model'], interpolate=False,
             )
+        del m_file
 
         # Weighted spatial average using inverse distance
         weights = inverse_distance_weights(dists, power=weight_power)
@@ -586,36 +593,58 @@ def collocate_data(model_file_paths: list[str],
 if __name__ == "__main__":
 
     # Testing (Felicio):
-    def hercules_R09b():
-        rundir = r'/work2/noaa/nos-surge/felicioc/BeringSea/R09b/'
-        variable_name = 'sigWaveHeight'
+    def hercules_R09_10():
+        run='R09b'
+        rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{run}/'
+        variable_name = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
         start_date = np.datetime64('2019-08-01')
         end_date = np.datetime64('2019-10-31')
-        model="SCHISM"
-
-        print('Select matching model files')
-        model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model)
-        print('Finished selecting model files')
 
         mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
         dist_coast = xr.open_dataset(r'/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/distFromCoast.nc')
         ds_sat = xr.open_dataset(r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/multisat_cropped_2019-07-01_2019-11-15.nc")
-
         mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
         mesh_y = mesh.vert2['coord'][:, 1]
         mesh_depth = mesh.value.ravel()
 
-        collocate_data(model_paths,
-                    variable_name,
-                    ds_sat,
-                    mesh_x,
-                    mesh_y,
-                    mesh_depth,
-                    dist_coast,
-                    model,
-                    n_nearest=3,
-                    time_buffer=np.timedelta64(30, 'm'),
-                    weight_power=1.0,
-                    temporal_interp=True,
-                    output_path=r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/collocated.nc")
-    hercules_R09b()
+        for variable in variable_name:
+            print(f'Starting Variable: {variable}')
+
+            if variable_name == 'sigWaveHeight':
+                model_dict = {'var': 'sigWaveHeight',
+                            'startswith': 'out2d_',
+                            'var_type': '2D',
+                            'model': 'SCHISM'}
+            if variable_name == 'elevation':
+                model_dict = {'var': 'elevation',
+                            'startswith': 'out2d_',
+                            'var_type': '2D',
+                            'model': 'SCHISM'}
+            if variable_name == 'horizontalVelX':
+                model_dict = {'var': 'horizontalVelX',
+                            'startswith': 'horizontalVelX',
+                            'var_type': '3D',
+                            'model': 'SCHISM'}
+            if variable_name == 'horizontalVelY':
+                model_dict = {'var': 'horizontalVelY',
+                            'startswith': 'horizontalVelY',
+                            'var_type': '3D',
+                            'model': 'SCHISM'}
+
+            print('Select matching model files')
+            model_paths = select_model_files_in_timerange(rundir, start_date, end_date, model_dict)
+            print('Finished selecting model files')
+
+            collocate_data(model_paths,
+                        model_dict,
+                        ds_sat,
+                        mesh_x,
+                        mesh_y,
+                        mesh_depth,
+                        dist_coast,
+                        n_nearest=3,
+                        time_buffer=np.timedelta64(30, 'm'),
+                        weight_power=1.0,
+                        temporal_interp=True,
+                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable}.nc")
+    hercules_R09_10()
