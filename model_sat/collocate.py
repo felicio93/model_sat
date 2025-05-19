@@ -606,7 +606,7 @@ def hercules_R09_10():
     for run in runs:
         print(f'starting run: {run}')
         for variable_name in variable_names:
-            print(f'Starting Variable: {variable_name')
+            print(f'Starting Variable: {variable_name}')
     
             if variable_name == 'sigWaveHeight':
                 model_dict = {'var': 'sigWaveHeight',
