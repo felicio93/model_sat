@@ -590,13 +590,13 @@ def collocate_data(model_file_paths: list[str],
     return ds_out
 
 def hercules_R09_10():
-    runs = ['R09a','R09b','R10b']
-    rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
+    runs = ['R09b','R10b']#'R09a'
+    #rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
     variable_names = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
     start_date = np.datetime64('2019-08-01')
     end_date = np.datetime64('2019-10-31')
 
-    mesh = ocsmesh.Mesh.open(rundir + 'hgrid.gr3', crs=4326)
+    mesh = ocsmesh.Mesh.open(f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/' + 'hgrid.gr3', crs=4326)
     dist_coast = xr.open_dataset(r'/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/distFromCoast.nc')
     ds_sat = xr.open_dataset(r"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/multisat_cropped_2019-07-01_2019-11-15.nc")
     mesh_x = convert_longitude(mesh.vert2['coord'][:, 0], 2)
@@ -605,6 +605,7 @@ def hercules_R09_10():
 
     for run in runs:
         print(f'starting run: {run}')
+        rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{run}/'
         for variable_name in variable_names:
             print(f'Starting Variable: {variable_name}')
     
