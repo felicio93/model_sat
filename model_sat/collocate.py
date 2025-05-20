@@ -599,7 +599,7 @@ def collocate_data(model_file_paths: list[str],
     return ds_out
 
 def hercules_R09_10():
-    runs = ['R09b','R10b']#'R09a'
+    runs = ['R09b','R10b','R09a']#'R09a'
     #rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
     variable_names = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
     start_date = np.datetime64('2019-08-01')
