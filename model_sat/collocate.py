@@ -329,6 +329,8 @@ def make_collocated_nc(results: dict,
                     np.concatenate(results['lat_sat'])),
             'sat_swh': (['time'],
                         np.concatenate(results['sat_swh'])),
+            'sat_sla': (['time'],
+                        np.concatenate(results['sat_sla'])),
             'model_swh': (['time',
                            'nearest_nodes'],
                           np.vstack(results['model_swh'])),
@@ -377,6 +379,12 @@ def make_collocated_nc(results: dict,
     ds["sat_swh"].attrs = {
         "standard_name": "sea_surface_wave_significant_height",
         "long_name": "Ku-band significant wave height",
+        "units": "m",
+        "coordinates": "time"
+    }
+    ds["sat_sla"].attrs = {
+        "standard_name": "sea_surface_height_above_sea_level",
+        "long_name": "sea level anomaly",
         "units": "m",
         "coordinates": "time"
     }
@@ -504,7 +512,7 @@ def collocate_data(model_file_paths: list[str],
     distcoast = dist_coast['distcoast']  # Keep as xarray DataArray
 
     results = {
-        'sat_swh': [], 'model_swh': [], 'model_dpt': [],
+        'sat_swh': [], 'sat_sla': [], 'model_swh': [], 'model_dpt': [],
         'dist_deltas': [], 'node_ids': [], 'time_deltas': [],
         'bias_raw': [], 'bias_weighted': [], 'dist_coast': [], 
         'source_sat': [], 'time_sat': [], 'lat_sat': [], 'lon_sat': [],
@@ -555,6 +563,7 @@ def collocate_data(model_file_paths: list[str],
         ).values
 
         results['sat_swh'].append(ds_sat_subset.swh.values)
+        results['sat_sla'].append(ds_sat_subset.sla.values)
         results['model_swh'].append(nearest_model_values)
         results['model_dpt'].append(nearest_model_depths)
         results['dist_deltas'].append(dists)
