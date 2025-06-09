@@ -599,7 +599,7 @@ def collocate_data(model_file_paths: list[str],
     return ds_out
 
 def hercules_R09_10():
-    runs = ['R09b','R10b','R09a']#'R09a'
+    runs = ['R09a','R09b','R09c','R10a','R10b','R10c']
     #rundir = f'/work2/noaa/nos-surge/felicioc/BeringSea/{runs[0]}/'
     variable_names = ['sigWaveHeight','elevation','horizontalVelX','horizontalVelY']
     start_date = np.datetime64('2019-08-01')
@@ -654,7 +654,7 @@ def hercules_R09_10():
                         time_buffer=np.timedelta64(30, 'm'),
                         weight_power=1.0,
                         temporal_interp=True,
-                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P09/sat_val/{run}_collocated_{variable_name}.nc")
+                        output_path=f"/work2/noaa/nos-surge/felicioc/BeringSea/P10/sat_val/{run}_collocated_{variable_name}.nc")
 
 if __name__ == "__main__":
 
